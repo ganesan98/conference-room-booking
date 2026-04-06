@@ -66,8 +66,8 @@ Enter your Oracle credentials in the login screen and click **Connect**.
 
 | Field        | Example       |
 |--------------|---------------|
-| Host / IP    | 10.1.67.153   |
-| Port         | 1522          |
+| Host / IP    | your_hostname |
+| Port         | 1521/1522     |
 | Service Name | orclNew       |
 | Username     | your_username |
 | Password     | your_password |
