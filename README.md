@@ -99,4 +99,4 @@ Enter your Oracle credentials in the login screen and click **Connect**.
 - Oracle listener must be running on the DB server before connecting
 - No credentials are stored in the code or committed to the repo
 - Booking conflict detection prevents double-booking of rooms
-- 
+
