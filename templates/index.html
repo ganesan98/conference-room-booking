@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Conference Room Booking</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0f14;
+      --surface: #161a23;
+      --surface2: #1e2433;
+      --border: #2a3045;
+      --accent: #4f8ef7;
+      --accent2: #7c5cfc;
+      --success: #34d399;
+      --danger: #f87171;
+      --text: #e8ecf4;
+      --muted: #6b7694;
+      --font-body: 'DM Sans', sans-serif;
+      --font-head: 'Syne', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      background-image:
+        radial-gradient(ellipse at 20% 10%, rgba(79,142,247,0.07) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 90%, rgba(124,92,252,0.07) 0%, transparent 60%);
+    }
+
+    /* ===================== LOGIN OVERLAY ===================== */
+    #loginOverlay {
+      position: fixed; inset: 0; z-index: 1000;
+      background: rgba(13,15,20,0.97);
+      backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #loginOverlay.hidden { display: none; }
+
+    .login-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 460px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+    }
+    .login-box .login-logo {
+      font-family: var(--font-head);
+      font-size: 1.5rem;
+      margin-bottom: 6px;
+      text-align: center;
+    }
+    .login-box .login-logo span { color: var(--accent); }
+    .login-box .login-sub {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 28px;
+    }
+    .login-box .db-icon {
+      display: block;
+      text-align: center;
+      font-size: 2.4rem;
+      margin-bottom: 14px;
+    }
+
+    .login-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .login-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .login-group.full { grid-column: 1 / -1; }
+
+    .login-label {
+      font-size: 0.75rem; font-weight: 500;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .login-input {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-family: var(--font-body);
+      font-size: 0.9rem; padding: 10px 14px; outline: none; width: 100%;
+      transition: border-color 0.2s;
+    }
+    .login-input:focus { border-color: var(--accent); }
+
+    .btn-connect {
+      width: 100%; padding: 12px; border: none; border-radius: 10px;
+      background: var(--accent); color: #fff;
+      font-family: var(--font-body); font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; margin-top: 6px;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-connect:hover { background: #3a7ce8; transform: translateY(-1px); }
+    .btn-connect:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .login-error {
+      background: rgba(248,113,113,0.1);
+      border: 1px solid rgba(248,113,113,0.3);
+      color: var(--danger);
+      border-radius: 8px; padding: 10px 14px;
+      font-size: 0.83rem; margin-top: 12px;
+      display: none;
+    }
+    .login-error.show { display: block; }
+
+    /* ===================== HEADER ===================== */
+    header {
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(13,15,20,0.9);
+      backdrop-filter: blur(10px);
+    }
+    .logo { font-family: var(--font-head); font-size: 1.4rem; }
+    .logo span { color: var(--accent); }
+
+    .header-right { display: flex; align-items: center; gap: 14px; }
+
+    .conn-badge {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.78rem; color: var(--success);
+      background: rgba(52,211,153,0.1);
+      border: 1px solid rgba(52,211,153,0.25);
+      border-radius: 20px; padding: 4px 12px;
+    }
+    .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    .btn-disconnect {
+      padding: 6px 14px; border-radius: 7px; font-size: 0.78rem; font-weight: 500;
+      background: rgba(248,113,113,0.1); color: var(--danger);
+      border: 1px solid rgba(248,113,113,0.25); cursor: pointer;
+      font-family: var(--font-body); transition: background 0.2s;
+    }
+    .btn-disconnect:hover { background: rgba(248,113,113,0.2); }
+
+    .nav-tabs { display: flex; gap: 4px; background: var(--surface); border-radius: 10px; padding: 4px; }
+    .tab-btn {
+      padding: 8px 18px; border: none; border-radius: 7px;
+      cursor: pointer; font-family: var(--font-body); font-size: 0.85rem; font-weight: 500;
+      background: transparent; color: var(--muted); transition: all 0.2s;
+    }
+    .tab-btn.active { background: var(--accent); color: #fff; }
+    .tab-btn:hover:not(.active) { color: var(--text); background: var(--surface2); }
+
+    main { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+
+    .section { display: none; }
+    .section.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+    .section-header { margin-bottom: 28px; }
+    .section-header h2 { font-family: var(--font-head); font-size: 1.8rem; margin-bottom: 4px; }
+    .section-header p { color: var(--muted); font-size: 0.9rem; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 18px; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+
+    label { font-size: 0.78rem; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    input, select {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-family: var(--font-body);
+      font-size: 0.9rem; padding: 10px 14px; outline: none; width: 100%;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+    select option { background: var(--surface2); }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 22px; border: none; border-radius: 8px;
+      font-family: var(--font-body); font-size: 0.88rem; font-weight: 500;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #3a7ce8; transform: translateY(-1px); }
+    .btn-danger { background: rgba(248,113,113,0.12); color: var(--danger); border: 1px solid rgba(248,113,113,0.25); }
+    .btn-danger:hover { background: rgba(248,113,113,0.22); }
+    .btn-sm { padding: 5px 12px; font-size: 0.78rem; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 28px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+    .stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .stat-value { font-family: var(--font-head); font-size: 2rem; }
+    .stat-value.blue { color: var(--accent); }
+    .stat-value.purple { color: #a78bfa; }
+    .stat-value.green { color: var(--success); }
+
+    .data-table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+    .data-table th {
+      text-align: left; padding: 10px 14px; color: var(--muted);
+      font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .data-table td { padding: 12px 14px; border-bottom: 1px solid rgba(42,48,69,0.4); vertical-align: middle; }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: rgba(255,255,255,0.015); }
+
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.73rem; font-weight: 500; }
+    .badge-blue   { background: rgba(79,142,247,0.15); color: var(--accent); }
+    .badge-purple { background: rgba(124,92,252,0.15); color: #a78bfa; }
+    .badge-green  { background: rgba(52,211,153,0.15); color: var(--success); }
+
+    .empty { text-align: center; padding: 36px; color: var(--muted); font-size: 0.88rem; }
+    .empty-icon { font-size: 1.8rem; margin-bottom: 8px; }
+
+    #toast {
+      position: fixed; bottom: 28px; right: 28px;
+      padding: 13px 20px; border-radius: 10px;
+      font-size: 0.87rem; font-weight: 500;
+      display: none; z-index: 9999;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      animation: slideUp 0.3s ease;
+    }
+    #toast.success { background: rgba(52,211,153,0.15); color: var(--success); border: 1px solid rgba(52,211,153,0.3); }
+    #toast.error   { background: rgba(248,113,113,0.15); color: var(--danger);  border: 1px solid rgba(248,113,113,0.3); }
+    @keyframes slideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+
+    @media (max-width: 640px) {
+      header { padding: 14px 16px; flex-direction: column; gap: 10px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .stats-row { grid-template-columns: 1fr; }
+      main { padding: 20px 14px; }
+      .login-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===================== ORACLE LOGIN OVERLAY ===================== -->
+<div id="loginOverlay">
+  <div class="login-box">
+    <span class="db-icon">🗄️</span>
+    <div class="login-logo">Conf<span>Room</span></div>
+    <div class="login-sub">Enter your Oracle SQL Developer credentials to connect</div>
+
+    <div class="login-row">
+      <div class="login-group full">
+        <label class="login-label">Host / IP Address</label>
+        <input class="login-input" type="text" id="lHost" placeholder="e.g. 10.1.67.153" autocomplete="off"/>
+      </div>
+      <div class="login-group">
+        <label class="login-label">Port</label>
+        <input class="login-input" type="text" id="lPort" placeholder="1521" value="1521"/>
+      </div>
+      <div class="login-group">
+        <label class="login-label">Service Name</label>
+        <input class="login-input" type="text" id="lService" placeholder="e.g. orclNew" autocomplete="off"/>
+      </div>
+      <div class="login-group">
+        <label class="login-label">Username</label>
+        <input class="login-input" type="text" id="lUser" placeholder="e.g. msc23pc18" autocomplete="off"/>
+      </div>
+      <div class="login-group">
+        <label class="login-label">Password</label>
+        <input class="login-input" type="password" id="lPass" placeholder="••••••••"/>
+      </div>
+    </div>
+
+    <button class="btn-connect" id="connectBtn" onclick="doConnect()">
+      🔌 Connect to Oracle
+    </button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- ===================== MAIN APP ===================== -->
+<header>
+  <div class="logo">Conf<span>Room</span></div>
+  <nav class="nav-tabs">
+    <button class="tab-btn active" onclick="switchTab('bookings', this)">📅 Bookings</button>
+    <button class="tab-btn"        onclick="switchTab('rooms',    this)">🏢 Rooms</button>
+    <button class="tab-btn"        onclick="switchTab('users',    this)">👤 Users</button>
+  </nav>
+  <div class="header-right">
+    <div class="conn-badge">
+      <div class="conn-dot"></div>
+      <span id="connLabel">Connected</span>
+    </div>
+    <button class="btn-disconnect" onclick="doDisconnect()">⏏ Disconnect</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- ======= BOOKINGS ======= -->
+  <section id="bookings" class="section active">
+    <div class="section-header">
+      <h2>Conference Bookings</h2>
+      <p>Schedule and manage room reservations</p>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">Total Rooms</div><div class="stat-value blue"   id="statRooms">—</div></div>
+      <div class="stat-card"><div class="stat-label">Active Now</div> <div class="stat-value purple" id="statActive">—</div></div>
+      <div class="stat-card"><div class="stat-label">Available</div>  <div class="stat-value green"  id="statAvail">—</div></div>
+    </div>
+
+    <div class="card">
+      <h3>➕ New Booking</h3>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>User</label>
+          <select id="bUser"><option value="">— Select User —</option></select>
+        </div>
+        <div class="form-group">
+          <label>Room</label>
+          <select id="bRoom"><option value="">— Select Room —</option></select>
+        </div>
+        <div class="form-group">
+          <label>From</label>
+          <input type="datetime-local" id="bFrom"/>
+        </div>
+        <div class="form-group">
+          <label>To</label>
+          <input type="datetime-local" id="bTo"/>
+        </div>
+        <div class="form-group full">
+          <label>Purpose</label>
+          <input type="text" id="bPurpose" placeholder="e.g. Team standup, Client demo…"/>
+        </div>
+        <div class="form-group full">
+          <button class="btn btn-primary" onclick="submitBooking()">📅 Book Room</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>All Bookings</h3>
+      <table class="data-table">
+        <thead>
+          <tr><th>ID</th><th>User</th><th>Room</th><th>From</th><th>To</th><th>Purpose</th><th>Action</th></tr>
+        </thead>
+        <tbody id="bookingsList">
+          <tr><td colspan="7" class="empty"><div class="empty-icon">📋</div>Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ======= ROOMS ======= -->
+  <section id="rooms" class="section">
+    <div class="section-header">
+      <h2>Room Management</h2>
+      <p>Add and remove conference rooms</p>
+    </div>
+
+    <div class="card">
+      <h3>➕ Add Room</h3>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Room Name</label>
+          <input type="text" id="rName" placeholder="e.g. Board Room"/>
+        </div>
+        <div class="form-group">
+          <label>Capacity</label>
+          <input type="number" id="rCap" placeholder="e.g. 12" min="1"/>
+        </div>
+        <div class="form-group full">
+          <label>Location</label>
+          <input type="text" id="rLoc" placeholder="e.g. Floor 3, East Wing"/>
+        </div>
+        <div class="form-group full">
+          <button class="btn btn-primary" onclick="addRoom()">🏢 Add Room</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>All Rooms</h3>
+      <table class="data-table">
+        <thead>
+          <tr><th>ID</th><th>Name</th><th>Capacity</th><th>Location</th><th>Action</th></tr>
+        </thead>
+        <tbody id="roomsList">
+          <tr><td colspan="5" class="empty"><div class="empty-icon">🏢</div>Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ======= USERS ======= -->
+  <section id="users" class="section">
+    <div class="section-header">
+      <h2>User Management</h2>
+      <p>Register and manage system users</p>
+    </div>
+
+    <div class="card">
+      <h3>➕ Add User</h3>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="uName" placeholder="e.g. john_doe"/>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="uEmail" placeholder="e.g. john@company.com"/>
+        </div>
+        <div class="form-group full">
+          <button class="btn btn-primary" onclick="addUser()">👤 Add User</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>All Users</h3>
+      <table class="data-table">
+        <thead>
+          <tr><th>ID</th><th>Username</th><th>Email</th><th>Action</th></tr>
+        </thead>
+        <tbody id="usersList">
+          <tr><td colspan="4" class="empty"><div class="empty-icon">👤</div>Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+  // ---- TAB SWITCH ----
+  function switchTab(name, btn) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(name).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  // ---- TOAST ----
+  function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = type;
+    t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 3500);
+  }
+
+  // ---- API HELPER ----
+  async function api(url, method = 'GET', body = null) {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const res  = await fetch(url, opts);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Unknown error');
+    return data;
+  }
+
+  // ---- ORACLE LOGIN ----
+  async function doConnect() {
+    const btn = document.getElementById('connectBtn');
+    const errBox = document.getElementById('loginError');
+    errBox.classList.remove('show');
+
+    const host         = document.getElementById('lHost').value.trim();
+    const port         = document.getElementById('lPort').value.trim() || '1521';
+    const service_name = document.getElementById('lService').value.trim();
+    const username     = document.getElementById('lUser').value.trim();
+    const password     = document.getElementById('lPass').value;
+
+    if (!host || !service_name || !username || !password) {
+      errBox.textContent = 'All fields are required.';
+      errBox.classList.add('show');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Connecting…';
+
+    try {
+      const res = await api('/api/connect', 'POST', { host, port, service_name, username, password });
+      document.getElementById('connLabel').textContent = `${username}@${host}`;
+      document.getElementById('loginOverlay').classList.add('hidden');
+      loadRooms(); loadUsers(); loadBookings(); loadStats();
+      showToast(`✅ ${res.message}`);
+    } catch(e) {
+      errBox.textContent = e.message;
+      errBox.classList.add('show');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '🔌 Connect to Oracle';
+    }
+  }
+
+  // Allow Enter key in login form
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !document.getElementById('loginOverlay').classList.contains('hidden')) {
+      doConnect();
+    }
+  });
+
+  // ---- DISCONNECT ----
+  async function doDisconnect() {
+    if (!confirm('Disconnect from Oracle? You will need to re-enter credentials.')) return;
+    try {
+      await api('/api/disconnect', 'POST');
+      document.getElementById('loginOverlay').classList.remove('hidden');
+      document.getElementById('lPass').value = '';
+      showToast('🔌 Disconnected from Oracle');
+    } catch(e) { showToast(`❌ ${e.message}`, 'error'); }
+  }
+
+  // ---- STATS ----
+  async function loadStats() {
+    try {
+      const d = await api('/dashboard');
+      document.getElementById('statRooms').textContent  = d.total_rooms;
+      document.getElementById('statActive').textContent = d.active_bookings;
+      document.getElementById('statAvail').textContent  = d.available_rooms;
+    } catch(e) { console.error('Stats error:', e); }
+  }
+
+  // ==================== ROOMS ====================
+  async function loadRooms() {
+    try {
+      const rooms = await api('/api/rooms');
+      const tbody = document.getElementById('roomsList');
+      if (!rooms.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty"><div class="empty-icon">🏢</div>No rooms yet — add one above</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = rooms.map(r => `
+        <tr>
+          <td><span class="badge badge-blue">#${r.id}</span></td>
+          <td><strong>${r.name}</strong></td>
+          <td>${r.capacity} people</td>
+          <td>${r.location || '—'}</td>
+          <td><button class="btn btn-danger btn-sm" onclick="deleteRoom(${r.id})">🗑 Delete</button></td>
+        </tr>
+      `).join('');
+
+      const sel = document.getElementById('bRoom');
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">— Select Room —</option>' +
+        rooms.map(r => `<option value="${r.id}">${r.name} (cap: ${r.capacity})</option>`).join('');
+      sel.value = cur;
+    } catch(e) { showToast('❌ Could not load rooms', 'error'); }
+  }
+
+  async function addRoom() {
+    const name = document.getElementById('rName').value.trim();
+    const cap  = parseInt(document.getElementById('rCap').value);
+    const loc  = document.getElementById('rLoc').value.trim();
+    if (!name || !cap) return showToast('Room name and capacity are required', 'error');
+    try {
+      const res = await api('/api/rooms', 'POST', { name, capacity: cap, location: loc });
+      showToast(`✅ Room created (ID: ${res.id})`);
+      document.getElementById('rName').value = '';
+      document.getElementById('rCap').value  = '';
+      document.getElementById('rLoc').value  = '';
+      loadRooms(); loadStats();
+    } catch(e) { showToast(`❌ ${e.message}`, 'error'); }
+  }
+
+  async function deleteRoom(id) {
+    if (!confirm(`Delete Room #${id}? All its bookings will also be removed.`)) return;
+    try {
+      await api(`/api/rooms/${id}`, 'DELETE');
+      showToast(`✅ Room #${id} deleted`);
+      loadRooms(); loadBookings(); loadStats();
+    } catch(e) { showToast(`❌ ${e.message}`, 'error'); }
+  }
+
+  // ==================== USERS ====================
+  async function loadUsers() {
+    try {
+      const users = await api('/api/users');
+      const tbody = document.getElementById('usersList');
+      if (!users.length) {
+        tbody.innerHTML = `<tr><td colspan="4" class="empty"><div class="empty-icon">👤</div>No users yet — add one above</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = users.map(u => `
+        <tr>
+          <td><span class="badge badge-purple">#${u.id}</span></td>
+          <td><strong>${u.username}</strong></td>
+          <td>${u.email}</td>
+          <td><button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})">🗑 Delete</button></td>
+        </tr>
+      `).join('');
+
+      const sel = document.getElementById('bUser');
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">— Select User —</option>' +
+        users.map(u => `<option value="${u.id}">${u.username}</option>`).join('');
+      sel.value = cur;
+    } catch(e) { showToast('❌ Could not load users', 'error'); }
+  }
+
+  async function addUser() {
+    const username = document.getElementById('uName').value.trim();
+    const email    = document.getElementById('uEmail').value.trim();
+    if (!username || !email) return showToast('Username and email are required', 'error');
+    try {
+      const res = await api('/api/users', 'POST', { username, email });
+      showToast(`✅ User created (ID: ${res.id})`);
+      document.getElementById('uName').value  = '';
+      document.getElementById('uEmail').value = '';
+      loadUsers();
+    } catch(e) { showToast(`❌ ${e.message}`, 'error'); }
+  }
+
+  async function deleteUser(id) {
+    if (!confirm(`Delete User #${id}? Their bookings will also be removed.`)) return;
+    try {
+      await api(`/api/users/${id}`, 'DELETE');
+      showToast(`✅ User #${id} deleted`);
+      loadUsers(); loadBookings(); loadStats();
+    } catch(e) { showToast(`❌ ${e.message}`, 'error'); }
+  }
+
+  // ==================== BOOKINGS ====================
+  async function loadBookings() {
+    try {
+      const bookings = await api('/api/bookings');
+      const tbody = document.getElementById('bookingsList');
+      if (!bookings.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="empty"><div class="empty-icon">📋</div>No bookings yet</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = bookings.map(b => `
+        <tr>
+          <td><span class="badge badge-green">#${b.id}</span></td>
+          <td>${b.username}</td>
+          <td>${b.room_name}</td>
+          <td>${fmt(b.start_time)}</td>
+          <td>${fmt(b.end_time)}</td>
+          <td>${b.purpose || '—'}</td>
+          <td><button class="btn btn-danger btn-sm" onclick="deleteBooking(${b.id})">🗑 Cancel</button></td>
+        </tr>
+      `).join('');
+    } catch(e) { showToast('❌ Could not load bookings', 'error'); }
+  }
+
+  async function submitBooking() {
+    const user_id    = document.getElementById('bUser').value;
+    const room_id    = document.getElementById('bRoom').value;
+    const start_time = document.getElementById('bFrom').value;
+    const end_time   = document.getElementById('bTo').value;
+    const purpose    = document.getElementById('bPurpose').value.trim();
+
+    if (!user_id || !room_id || !start_time || !end_time)
+      return showToast('User, Room, From and To are all required', 'error');
+
+    try {
+      const res = await api('/api/bookings', 'POST', {
+        user_id: parseInt(user_id),
+        room_id: parseInt(room_id),
+        start_time, end_time, purpose
+      });
+      showToast(`✅ Booking confirmed! (ID: ${res.id})`);
+      document.getElementById('bFrom').value    = '';
+      document.getElementById('bTo').value      = '';
+      document.getElementById('bPurpose').value = '';
+      loadBookings(); loadStats();
+    } catch(e) { showToast(`❌ ${e.message}`, 'error'); }
+  }
+
+  async function deleteBooking(id) {
+    if (!confirm(`Cancel Booking #${id}?`)) return;
+    try {
+      await api(`/api/bookings/${id}`, 'DELETE');
+      showToast(`✅ Booking #${id} cancelled`);
+      loadBookings(); loadStats();
+    } catch(e) { showToast(`❌ ${e.message}`, 'error'); }
+  }
+
+  // ---- FORMAT DATE ----
+  function fmt(iso) {
+    const d = new Date(iso);
+    const day   = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year  = d.getFullYear();
+    const hrs   = String(d.getHours()).padStart(2, '0');
+    const mins  = String(d.getMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hrs}:${mins}`;
+}
+
+  // ---- CHECK IF ALREADY CONNECTED (e.g. after page refresh) ----
+  (async () => {
+    try {
+      const s = await api('/api/status');
+      if (s.connected) {
+        document.getElementById('loginOverlay').classList.add('hidden');
+        loadRooms(); loadUsers(); loadBookings(); loadStats();
+      }
+    } catch(e) { /* stay on login */ }
+  })();
+</script>
+</body>
+</html>
